@@ -1,4 +1,10 @@
-import {GraphQLFloat, GraphQLList, GraphQLObjectType, GraphQLString} from "graphql/type/index.js";
+import {
+    GraphQLFloat,
+    GraphQLInputObjectType,
+    GraphQLList,
+    GraphQLObjectType,
+    GraphQLString
+} from "graphql/type/index.js";
 import {Post, postType} from "./post.js";
 import {Profile, profileType} from "./profile.js";
 import {UUIDType} from "./uuid.js";
@@ -19,7 +25,6 @@ export interface User {
 export interface ContextType extends FastifyInstance {
     prisma: PrismaClient;
 }
-
 
 export const userType = new GraphQLObjectType({
     name: 'User',
@@ -81,4 +86,12 @@ export const userType = new GraphQLObjectType({
             )
         }
     }),
+})
+
+export const createUserInputType = new GraphQLInputObjectType({
+    name: 'CreateUserInput',
+    fields: () => ({
+        name: {type: GraphQLString},
+        balance: {type: GraphQLFloat},
+    })
 })
