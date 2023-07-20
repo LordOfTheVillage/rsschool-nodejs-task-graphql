@@ -34,7 +34,7 @@ export const userType = new GraphQLObjectType({
         balance: {type: GraphQLFloat},
         profile: {
             type: profileType,
-            resolve: async (source, args, { prisma }: ContextType) => (
+            resolve: async (source, args, {prisma}: ContextType) => (
                 await prisma.profile.findUnique({
                     where: {
                         userId: source.id
@@ -47,7 +47,7 @@ export const userType = new GraphQLObjectType({
         },
         posts: {
             type: new GraphQLList(postType),
-            resolve: async (source, args, { prisma }: ContextType) => (
+            resolve: async (source, args, {prisma}: ContextType) => (
                 await prisma.post.findMany({
                     where: {
                         authorId: source.id
@@ -58,7 +58,7 @@ export const userType = new GraphQLObjectType({
         userSubscribedTo: {
             // @ts-ignore
             type: new GraphQLList(userType),
-            resolve: async (source, args, { prisma }: ContextType) => (
+            resolve: async (source, args, {prisma}: ContextType) => (
                 await prisma.user.findMany({
                     where: {
                         subscribedToUser: {
@@ -73,7 +73,7 @@ export const userType = new GraphQLObjectType({
         subscribedToUser: {
             // @ts-ignore
             type: new GraphQLList(userType),
-            resolve: async (source, args, { prisma }: ContextType) => (
+            resolve: async (source, args, {prisma}: ContextType) => (
                 await prisma.user.findMany({
                     where: {
                         userSubscribedTo: {
@@ -90,6 +90,14 @@ export const userType = new GraphQLObjectType({
 
 export const createUserInputType = new GraphQLInputObjectType({
     name: 'CreateUserInput',
+    fields: () => ({
+        name: {type: GraphQLString},
+        balance: {type: GraphQLFloat},
+    })
+})
+
+export const updateUserInputType = new GraphQLInputObjectType({
+    name: 'ChangeUserInput',
     fields: () => ({
         name: {type: GraphQLString},
         balance: {type: GraphQLFloat},

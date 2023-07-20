@@ -6,16 +6,19 @@ import {
     GraphQLSchema,
     GraphQLString
 } from "graphql/type/index.js";
-import {ContextType, createUserInputType, userType} from "../types/user.js";
-import {createPostInputType, postType} from "../types/post.js";
-import {createProfileInputType, profileType} from "../types/profile.js";
+import {ContextType, createUserInputType, updateUserInputType, userType} from "../types/user.js";
+import {createPostInputType, postType, updatePostInputType} from "../types/post.js";
+import {createProfileInputType, profileType, updateProfileInputType} from "../types/profile.js";
 import {memberTypeType} from "../types/member-type.js";
 import {memberTypeIdType} from "../types/member-type-id.js";
-import {CreateUserDto} from "../dto/create-user.dto.js";
+import {CreateUserDto} from "../dto/user/create-user.dto.js";
 import {DtoObject} from "../dto/dto-object.dto.js";
-import {CreatePostDto} from "../dto/create-post.dto.js";
-import {CreateProfileDto} from "../dto/create-profile.dto.js";
+import {CreatePostDto} from "../dto/post/create-post.dto.js";
+import {CreateProfileDto} from "../dto/profile/create-profile.dto.js";
 import {UUIDType} from "../types/uuid.js";
+import {UpdateUserDto} from "../dto/user/update-user.dto.js";
+import {UpdatePostDto} from "../dto/post/update-post.dto.js";
+import {UpdateProfileDto} from "../dto/profile/update-profile.dto.js";
 
 export const schema = new GraphQLSchema({
     query: new GraphQLObjectType({
@@ -178,6 +181,57 @@ export const schema = new GraphQLSchema({
                             id
                         }
                     }))
+                }
+            },
+            changeUser: {
+                type: userType,
+                args: {
+                    id: {type: UUIDType},
+                    dto: {type: updateUserInputType}
+                },
+                resolve: async (source, {id, dto}: DtoObject<UpdateUserDto>, {prisma}: ContextType) => {
+                    return await prisma.user.update({
+                        where: {
+                            id
+                        },
+                        data: {
+                            ...dto
+                        }
+                    })
+                }
+            },
+            changePost: {
+                type: postType,
+                args: {
+                    id: {type: UUIDType},
+                    dto: {type: updatePostInputType}
+                },
+                resolve: async (source, {id, dto}: DtoObject<UpdatePostDto>, {prisma}: ContextType) => {
+                    return await prisma.post.update({
+                        where: {
+                            id
+                        },
+                        data: {
+                            ...dto
+                        }
+                    })
+                }
+            },
+            changeProfile: {
+                type: profileType,
+                args: {
+                    id: {type: UUIDType},
+                    dto: {type: updateProfileInputType}
+                },
+                resolve: async (source, {id, dto}: DtoObject<UpdateProfileDto>, {prisma}: ContextType) => {
+                    return await prisma.profile.update({
+                        where: {
+                            id
+                        },
+                        data: {
+                            ...dto
+                        }
+                    })
                 }
             }
         })
