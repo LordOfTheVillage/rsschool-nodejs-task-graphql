@@ -1,4 +1,5 @@
 import {
+    GraphQLBoolean,
     GraphQLList,
     GraphQLNonNull,
     GraphQLObjectType,
@@ -14,6 +15,7 @@ import {CreateUserDto} from "../dto/create-user.dto.js";
 import {DtoObject} from "../dto/dto-object.dto.js";
 import {CreatePostDto} from "../dto/create-post.dto.js";
 import {CreateProfileDto} from "../dto/create-profile.dto.js";
+import {UUIDType} from "../types/uuid.js";
 
 export const schema = new GraphQLSchema({
     query: new GraphQLObjectType({
@@ -138,12 +140,46 @@ export const schema = new GraphQLSchema({
                         }
                     })
                 }
+            },
+            deleteUser: {
+                type: GraphQLBoolean,
+                args: {
+                    id: {type: UUIDType}
+                },
+                resolve: async (source, {id}, {prisma}: ContextType) => {
+                    return !!(await prisma.user.delete({
+                        where: {
+                            id
+                        }
+                    }))
+                }
+            },
+            deletePost: {
+                type: GraphQLBoolean,
+                args: {
+                    id: {type: UUIDType}
+                },
+                resolve: async (source, {id}, {prisma}: ContextType) => {
+                    return !!(await prisma.post.delete({
+                        where: {
+                            id
+                        }
+                    }))
+                }
+            },
+            deleteProfile: {
+                type: GraphQLBoolean,
+                args: {
+                    id: {type: UUIDType}
+                },
+                resolve: async (source, {id}, {prisma}: ContextType) => {
+                    return !!(await prisma.profile.delete({
+                        where: {
+                            id
+                        }
+                    }))
+                }
             }
         })
     })
 })
-
-// userId,
-//     memberTypeId,
-//     isMale: !randomInt(0, 2),
-//     yearOfBirth: randomInt(1950, 2000),
