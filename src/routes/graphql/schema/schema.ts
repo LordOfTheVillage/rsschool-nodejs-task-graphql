@@ -19,6 +19,7 @@ import {UUIDType} from "../types/uuid.js";
 import {UpdateUserDto} from "../dto/user/update-user.dto.js";
 import {UpdatePostDto} from "../dto/post/update-post.dto.js";
 import {UpdateProfileDto} from "../dto/profile/update-profile.dto.js";
+import {SubscribeDto} from "../dto/user/subscribe.dto.js";
 
 export const schema = new GraphQLSchema({
     query: new GraphQLObjectType({
@@ -232,6 +233,44 @@ export const schema = new GraphQLSchema({
                             ...dto
                         }
                     })
+                }
+            },
+            subscribeTo: {
+                type: userType,
+                args: {
+                    userId: {type: UUIDType},
+                    authorId: {type: UUIDType}
+                },
+                resolve: async (source, {userId, authorId}: SubscribeDto, {prisma}: ContextType) => {
+                    return await prisma.user.update({
+                        where: {
+                            id: userId,
+                        },
+                        data: {
+                            userSubscribedTo: {
+                                create: {
+                                    authorId: authorId,
+                                },
+                            },
+                        },
+                    })
+                }
+            },
+            unsubscribeFrom: {
+                type: GraphQLBoolean,
+                args: {
+                    userId: {type: UUIDType},
+                    authorId: {type: UUIDType}
+                },
+                resolve: async (source, {userId, authorId}: SubscribeDto, {prisma}: ContextType) => {
+                    return !!(await prisma.subscribersOnAuthors.delete({
+                        where: {
+                            subscriberId_authorId: {
+                                subscriberId: userId,
+                                authorId: authorId,
+                            },
+                        },
+                    }))
                 }
             }
         })
