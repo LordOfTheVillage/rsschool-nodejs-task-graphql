@@ -1,12 +1,10 @@
 import {
     GraphQLBoolean,
     GraphQLList,
-    GraphQLNonNull,
     GraphQLObjectType,
-    GraphQLSchema,
-    GraphQLString
+    GraphQLSchema
 } from "graphql/type/index.js";
-import {ContextType, createUserInputType, updateUserInputType, userType} from "../types/user.js";
+import {ContextType, createUserInputType, updateUserInputType, User, userType} from "../types/user.js";
 import {createPostInputType, postType, updatePostInputType} from "../types/post.js";
 import {createProfileInputType, profileType, updateProfileInputType} from "../types/profile.js";
 import {memberTypeType} from "../types/member-type.js";
@@ -20,6 +18,11 @@ import {UpdateUserDto} from "../dto/user/update-user.dto.js";
 import {UpdatePostDto} from "../dto/post/update-post.dto.js";
 import {UpdateProfileDto} from "../dto/profile/update-profile.dto.js";
 import {SubscribeDto} from "../dto/user/subscribe.dto.js";
+import {parseResolveInfo, ResolveTree, simplifyParsedResolveInfoFragmentWithType} from "graphql-parse-resolve-info";
+
+interface ParsedResolveInfoFragment {
+ fields: { [key in string]: ResolveTree}
+}
 
 export const schema = new GraphQLSchema({
     query: new GraphQLObjectType({
@@ -46,21 +49,31 @@ export const schema = new GraphQLSchema({
             },
             users: {
                 type: new GraphQLList(userType),
-                resolve: async (source, args, {prisma}: ContextType) => (
-                    await prisma.user.findMany()
-                )
+                resolve: async (source, args, {prisma, usersLoader}: ContextType, resolveInfo) => {
+                    const parsedResolveInfoFragment = parseResolveInfo(resolveInfo);
+                    const {fields}: ParsedResolveInfoFragment = simplifyParsedResolveInfoFragmentWithType(<ResolveTree>parsedResolveInfoFragment, new GraphQLList(userType));
+
+                    const users = (await prisma.user.findMany({
+                        include: {
+                            userSubscribedTo: !!fields.userSubscribedTo,
+                            subscribedToUser: !!fields.subscribedToUser,
+                        },
+                    }))
+
+                    users.forEach(user => {
+                        usersLoader.prime(user.id, user as User);
+                    });
+
+                    return users;
+                }
             },
             user: {
                 type: userType,
                 args: {
                     id: {type: userType.getFields().id.type}
                 },
-                resolve: async (source, {id}, {prisma}: ContextType) => (
-                    await prisma.user.findUnique({
-                        where: {
-                            id
-                        }
-                    })
+                resolve: async (source, {id}, {usersLoader}: ContextType) => (
+                    await usersLoader.load(id as string)
                 )
             },
             posts: {

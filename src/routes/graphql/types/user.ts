@@ -10,7 +10,10 @@ import {Profile, profileType} from "./profile.js";
 import {UUIDType} from "./uuid.js";
 import {PrismaClient} from "@prisma/client";
 import {FastifyInstance} from "fastify";
-import users from "../../users/index.js";
+import * as DataLoader from "dataloader";
+import {MemberTypeId} from "../../member-types/schemas.js";
+import {MemberType} from "./member-type.js";
+import {IdTypes, mapData} from "../utils/mapping.js";
 
 export interface User {
     id: string;
@@ -20,10 +23,17 @@ export interface User {
     posts?: Post[];
     userSubscribedTo?: User[];
     subscribedToUser?: User[];
+
+    subscriberId: string;
+    authorId: string;
 }
 
 export interface ContextType extends FastifyInstance {
-    prisma: PrismaClient;
+    profileByUserLoader: DataLoader<string, Profile>;
+    profilesByMemberTypeLoader: DataLoader<MemberTypeId, Profile[]>;
+    postsByAuthorLoader: DataLoader<string, Post[]>;
+    usersLoader: DataLoader<string, User>;
+    memberTypeLoader: DataLoader<string, MemberType>;
 }
 
 export const userType = new GraphQLObjectType({
@@ -34,56 +44,38 @@ export const userType = new GraphQLObjectType({
         balance: {type: GraphQLFloat},
         profile: {
             type: profileType,
-            resolve: async (source, args, {prisma}: ContextType) => (
-                await prisma.profile.findUnique({
-                    where: {
-                        userId: source.id
-                    },
-                    include: {
-                        memberType: true
-                    }
-                })
+            resolve: async ({id}: User, args, {profileByUserLoader}: ContextType) => (
+                await profileByUserLoader.load(id)
             )
         },
         posts: {
             type: new GraphQLList(postType),
-            resolve: async (source, args, {prisma}: ContextType) => (
-                await prisma.post.findMany({
-                    where: {
-                        authorId: source.id
-                    }
-                })
+            resolve: async ({id}, args, {postsByAuthorLoader}: ContextType) => (
+                await postsByAuthorLoader.load(id)
             )
         },
         userSubscribedTo: {
             // @ts-ignore
             type: new GraphQLList(userType),
-            resolve: async (source, args, {prisma}: ContextType) => (
-                await prisma.user.findMany({
-                    where: {
-                        subscribedToUser: {
-                            some: {
-                                subscriberId: source.id,
-                            },
-                        },
-                    },
-                })
-            )
+            resolve: async ({userSubscribedTo}, args, {usersLoader}: ContextType) => {
+                if (userSubscribedTo) {
+                    const authorIds = userSubscribedTo.map(({authorId}) => authorId);
+                    return usersLoader.loadMany(authorIds);
+                } else {
+                    return null;
+                }
+            }
         },
         subscribedToUser: {
-            // @ts-ignore
             type: new GraphQLList(userType),
-            resolve: async (source, args, {prisma}: ContextType) => (
-                await prisma.user.findMany({
-                    where: {
-                        userSubscribedTo: {
-                            some: {
-                                authorId: source.id,
-                            },
-                        },
-                    },
-                })
-            )
+            resolve: async ({subscribedToUser}, args, {prisma, usersLoader}: ContextType) => {
+                if (subscribedToUser) {
+                    const authorIds = subscribedToUser.map(({subscriberId}) => subscriberId);
+                    return usersLoader.loadMany(authorIds);
+                } else {
+                    return null;
+                }
+            }
         }
     }),
 })
@@ -103,3 +95,16 @@ export const updateUserInputType = new GraphQLInputObjectType({
         balance: {type: GraphQLFloat},
     })
 })
+
+export const usersLoader = (prisma: PrismaClient) => async (ids: readonly string[]) => {
+    const idsList = ids as string[];
+    const users = await prisma.user.findMany({
+        where: {id: {in: idsList}},
+        include: {
+            userSubscribedTo: true,
+            subscribedToUser: true,
+        },
+    });
+
+    return mapData(users, idsList, IdTypes.ID);
+}

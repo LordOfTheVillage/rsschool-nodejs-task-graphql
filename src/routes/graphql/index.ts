@@ -1,8 +1,13 @@
 import {FastifyPluginAsyncTypebox} from '@fastify/type-provider-typebox';
 import {createGqlResponseSchema, gqlResponseSchema} from './schemas.js';
-import {DocumentNode, graphql, parse, validate} from 'graphql';
-import {schema} from "./schema/schema.js";
-import depthLimit from 'graphql-depth-limit'
+import {graphql, parse, validate} from 'graphql';
+import {schema} from "./data/schema.js";
+import depthLimit from 'graphql-depth-limit';
+import DataLoader from "dataloader";
+import {usersLoader} from "./types/user.js";
+import {postsByAuthorLoader} from "./types/post.js";
+import {profilesByMemberTypeLoader, profilesByUserLoader} from "./types/profile.js";
+import {memberTypeLoader} from "./types/member-type.js";
 
 
 const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -27,11 +32,19 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
                 return { errors: validationErrors };
             }
 
+            const loaders = {
+                usersLoader: new DataLoader(usersLoader(prisma)),
+                postsByAuthorLoader: new DataLoader(postsByAuthorLoader(prisma)),
+                profileByUserLoader: new DataLoader(profilesByUserLoader(prisma)),
+                memberTypeLoader: new DataLoader(memberTypeLoader(prisma)),
+                profilesByMemberTypeLoader: new DataLoader(profilesByMemberTypeLoader(prisma)),
+            };
+
             const result = await graphql({
                 schema,
                 source: query,
                 variableValues: variables,
-                contextValue: {prisma},
+                contextValue: {prisma, ...loaders},
             });
             return {
                 data: result.data,
